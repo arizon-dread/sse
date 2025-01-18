@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	log.Println("Starting simple Serverside Event Streaming lab")
+	log.Println("Starting simple Server-sent Events lab")
 	mux := http.NewServeMux()
 	events := http.HandlerFunc(api.Events)
 	mux.Handle("GET /events/{recipient}", headers.SseHeadersMiddleware(events))
