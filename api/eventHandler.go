@@ -10,7 +10,7 @@ import (
 	"github.com/arizon-dread/sse/internal/model"
 )
 
-var recipients = make(map[string]chan string, 1)
+var recipients = make(map[string]chan string, 0)
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	recipient := r.PathValue("recipient")
@@ -45,13 +45,14 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-ctx.Done():
 			return
-		default:
-			if res, ok := <-recipients[recipient]; ok {
+		case res, ok := <-recipients[recipient]:
+			if ok {
 				fmt.Fprintf(w, "%s\n", res)
 				if flusher, ok := w.(http.Flusher); ok {
 					flusher.Flush()
 				}
 			} else {
+				ctx.Done()
 				return
 			}
 
