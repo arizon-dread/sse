@@ -1,0 +1,9 @@
+cors:
+  url: http://localhost:8080
+  methods: [
+    GET,
+    POST
+  ]
+  headers: [
+    Content-Type
+  ]
