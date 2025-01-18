@@ -1,4 +1,4 @@
-# Serverside Event Streaming lab
+# Server-sent Events lab
 
 # Steps to run
 - run `go run cmd/sse/main.go` to start the program
