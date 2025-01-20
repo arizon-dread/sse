@@ -11,7 +11,7 @@ func Register(recipient string, recipients map[string]chan string) error {
 		return fmt.Errorf("no recipient supplied to register")
 	}
 	if _, exists := recipients[recipient]; !exists {
-		recipients[recipient] = make(chan string, 2)
+		recipients[recipient] = make(chan string, 10)
 		log.Printf("Registered %v", recipient)
 	}
 
