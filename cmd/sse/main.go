@@ -14,6 +14,5 @@ func main() {
 	events := http.HandlerFunc(api.Events)
 	mux.Handle("GET /events/{recipient}", headers.SseHeadersMiddleware(events))
 	mux.HandleFunc("POST /message", api.ForwardMsg)
-	mux.HandleFunc("POST /register/{recipient}", api.Register)
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
