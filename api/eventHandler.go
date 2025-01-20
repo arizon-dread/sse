@@ -28,6 +28,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("event: unregistering client\n\n"))
 			close(recipients[recipient])
 			delete(recipients, recipient)
+			ctx.Done()
 		}
 
 	}()
