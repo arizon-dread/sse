@@ -7,47 +7,38 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/arizon-dread/sse/internal/helpers"
 	"github.com/arizon-dread/sse/internal/model"
 )
 
 var recipients = make(map[string]chan string, 0)
 
-func Register(w http.ResponseWriter, r *http.Request) {
-	recipient := r.PathValue("recipient")
-	if recipient == "" {
-		http.Error(w, "no recipient supplied", http.StatusBadRequest)
-		return
-	}
-	if _, exists := recipients[recipient]; !exists {
-		recipients[recipient] = make(chan string)
-		log.Printf("Registered %v", recipient)
-	}
-
-}
-
 func Events(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	recipient := r.PathValue("recipient")
-	if recipient == "" {
-		http.Error(w, "no recipient supplied", http.StatusBadRequest)
-		return
+	if err := helpers.Register(recipient, recipients); err != nil {
+		log.Printf("error registering client: '%v', error: %v", recipient, err)
+		w.WriteHeader(404)
+		w.Write([]byte("no client supplied"))
 	}
-	log.Printf("client %v is waiting for messages", recipient)
+
 	defer func() {
 		if _, exists := recipients[recipient]; exists {
 			log.Printf("unregistering client %v", recipient)
+			w.Write([]byte("event: unregistering client\n\n"))
 			close(recipients[recipient])
 			delete(recipients, recipient)
 		}
 
 	}()
+	log.Printf("client %v is waiting for messages", recipient)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case res, ok := <-recipients[recipient]:
 			if ok {
-				fmt.Fprintf(w, "%s\n", res)
+				fmt.Fprintf(w, "data: %s\n\n", res)
 				if flusher, ok := w.(http.Flusher); ok {
 					flusher.Flush()
 				}
@@ -77,9 +68,26 @@ func ForwardMsg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("received message for %v", msg.Recipient)
+	if err = helpers.Register(msg.Recipient, recipients); err != nil {
+		returnConflict(w)
+		return
+	}
 	if ch, exists := recipients[msg.Recipient]; exists {
 		log.Printf("forwarding message to %v", msg.Recipient)
-		ch <- msg.Message
+		select {
+		case ch <- msg.Message:
+		default:
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			w.Write([]byte("cache is full, no client is listening."))
+		}
 
+	} else {
+		returnConflict(w)
 	}
+
+}
+
+func returnConflict(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusConflict)
+	w.Write([]byte("supplied client is not registered."))
 }
