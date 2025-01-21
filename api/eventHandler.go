@@ -7,8 +7,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/arizon-dread/sse/internal/helpers"
 	"github.com/arizon-dread/sse/internal/model"
+	"github.com/arizon-dread/sse/pkg/handlers"
 )
 
 var recipients = make(map[string]chan string, 0)
@@ -16,7 +16,7 @@ var recipients = make(map[string]chan string, 0)
 func Events(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	recipient := r.PathValue("recipient")
-	if err := helpers.Register(recipient, recipients); err != nil {
+	if rcpt, err := handlers.Register(recipient); err != nil {
 		log.Printf("error registering client: '%v', error: %v", recipient, err)
 		w.WriteHeader(404)
 		w.Write([]byte("no client supplied"))
