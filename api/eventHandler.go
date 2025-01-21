@@ -25,7 +25,6 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if _, exists := recipients[recipient]; exists {
 			log.Printf("unregistering client %v", recipient)
-			w.Write([]byte("event: unregistering client\n\n"))
 			close(recipients[recipient])
 			delete(recipients, recipient)
 			ctx.Done()
