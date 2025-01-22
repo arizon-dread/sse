@@ -8,8 +8,8 @@ import (
 )
 
 type MsgHandler interface {
-	Pub(msg string) error
-	Sub(chan string) error
+	Send(msg string) error
+	Receive(chan string) error
 	Exists() bool
 	Unregister()
 }
@@ -24,7 +24,7 @@ func Register(rcpt string) (MsgHandler, error) {
 	cfg := config.Get()
 
 	if len(cfg.Cache.Url) > 0 {
-		return CacheMsgHandler{Name: rcpt, Ch: registerCacheMemRcpt(rcpt)}, nil
+		return CacheMsgHandler{Name: rcpt, Ch: registerCacheRcpt(rcpt)}, nil
 	} else {
 		return InMemMsgHandler{Name: rcpt, Ch: registerMemRcpt(rcpt)}, nil
 	}
@@ -39,6 +39,6 @@ func registerMemRcpt(rcpt string) chan string {
 	return recipients[rcpt]
 }
 
-func registerCacheMemRcpt(rcpt string) chan string {
+func registerCacheRcpt(rcpt string) chan string {
 
 }

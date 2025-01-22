@@ -7,15 +7,15 @@ type InMemMsgHandler struct {
 	Ch   chan string
 }
 
-func (immh InMemMsgHandler) Pub(msg string) error {
+func (immh InMemMsgHandler) Send(msg string) error {
 	recipients[immh.Name] <- msg
 	return nil
 }
-func (immh InMemMsgHandler) Sub(ch chan string) error {
+func (immh InMemMsgHandler) Receive(ch chan string) error {
 	if immh.Exists() {
 		return nil
 	}
-	recipients[immh.Name] = make(chan string, 10)
+	recipients[immh.Name] = ch
 	return nil
 }
 func (immh InMemMsgHandler) Exists() bool {

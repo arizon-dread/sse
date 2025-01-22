@@ -16,27 +16,27 @@ var recipients = make(map[string]chan string, 0)
 func Events(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	recipient := r.PathValue("recipient")
-	if rcpt, err := handlers.Register(recipient); err != nil {
+	handler, err := handlers.Register(recipient)
+	if err != nil {
 		log.Printf("error registering client: '%v', error: %v", recipient, err)
 		w.WriteHeader(404)
 		w.Write([]byte("no client supplied"))
 	}
 
 	defer func() {
-		if _, exists := recipients[recipient]; exists {
-			log.Printf("unregistering client %v", recipient)
-			close(recipients[recipient])
-			delete(recipients, recipient)
-			ctx.Done()
-		}
-
+		log.Printf("unregistering client %v", recipient)
+		handler.Unregister()
+		ctx.Done()
 	}()
+
+	subChan := make(chan string, 10)
+	handler.Sub(subChan)
 	log.Printf("client %v is waiting for messages", recipient)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case res, ok := <-recipients[recipient]:
+		case res, ok := <-subChan:
 			if ok {
 				fmt.Fprintf(w, "data: %s\n\n", res)
 				if flusher, ok := w.(http.Flusher); ok {
@@ -68,22 +68,20 @@ func ForwardMsg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("received message for %v", msg.Recipient)
-	if err = helpers.Register(msg.Recipient, recipients); err != nil {
-		returnConflict(w)
+	handler, err := handlers.Register(msg.Recipient)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if ch, exists := recipients[msg.Recipient]; exists {
-		log.Printf("forwarding message to %v", msg.Recipient)
-		select {
-		case ch <- msg.Message:
-		default:
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write([]byte("cache is full, no client is listening."))
-		}
 
-	} else {
-		returnConflict(w)
+	err = handler.Send(msg.Message)
+
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Write([]byte("cache is full, no client is listening."))
+		return
 	}
+	w.WriteHeader(http.StatusCreated)
 
 }
 

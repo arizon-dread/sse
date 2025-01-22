@@ -1,60 +1,76 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/arizon-dread/sse/internal/config"
-	"github.com/redis/go-redis"
-	"github.com/redis/go-redis/v6"
+	"github.com/redis/go-redis/v9"
 )
 
 type CacheMsgHandler struct {
 	Name string
 	Ch   chan string
-	sub  *redis.PubSub
 }
 
-func (cmh CacheMsgHandler) Pub(msg string) error {
+func (cmh CacheMsgHandler) Send(msg string) error {
 	rdb, err := conn()
 	if err != nil {
 		return fmt.Errorf("unable to connect to redis, not publishing message, %v\n", err)
 	}
 	defer rdb.Close()
-	err = rdb.Publish(cmh.Name, msg).Err()
-	if err != nil {
-		return err
-	}
+	ctx := context.Background()
+	cmd := rdb.XAdd(ctx, &redis.XAddArgs{Stream: cmh.Name, MaxLen: 100, Values: msg})
+	log.Printf("Added %v to stream %v and got id %v", msg, cmh.Name, cmd)
 	return nil
 }
 
-func (cmh CacheMsgHandler) Sub(ch chan string) error {
+func (cmh CacheMsgHandler) Receive(ch chan string) error {
 	rdb, err := conn()
 	if err != nil {
 		return fmt.Errorf("unable to connect to redis, not publishing message, %v\n", err)
 	}
-	cmh.sub = rdb.Subscribe(cmh.Name)
-
+	ctx, cancel := context.WithCancel(context.Background())
 	for {
-		msg, err := cmh.sub.ReceiveMessage()
+
+		msg := rdb.XRead(ctx, &redis.XReadArgs{Streams: []string{cmh.Name}, Count: 2, Block: time.Duration(time.Second * 20)})
+		streams, err := msg.Result()
 		if err != nil {
-			break
+			cancel()
+			return fmt.Errorf("reading failed, %v\n", err)
 		}
-		ch <- msg.Payload
+		for _, v := range streams {
+			for _, m := range v.Messages {
+				for _, val := range m.Values {
+					switch val.(type) {
+
+					case string:
+						ch <- val.(string)
+					default:
+						break
+					}
+				}
+			}
+		}
 
 	}
-	return nil
 }
 
 func (cmh CacheMsgHandler) Exists() bool {
-	if _, ok := <-cmh.Ch; !ok {
+	rdb, err := conn()
+	if err != nil {
 		return false
 	}
-	return true
+	info := rdb.XInfoStream(context.Background(), cmh.Name)
+	if info.Val().Length > 0 {
+		return true
+	}
+	return false
 }
 func (cmh CacheMsgHandler) Unregister() {
-	if cmh.sub != nil {
-		cmh.sub.Unsubscribe(cmh.Name)
-	}
+	// do nothing
 }
 func conn() (*redis.Client, error) {
 	conf := config.Get()
