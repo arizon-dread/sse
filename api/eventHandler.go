@@ -29,8 +29,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		ctx.Done()
 	}()
 
-	subChan := make(chan string, 10)
-	handler.Sub(subChan)
+	handler.Receive(handler.)
 	log.Printf("client %v is waiting for messages", recipient)
 	for {
 		select {

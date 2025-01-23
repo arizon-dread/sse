@@ -33,12 +33,14 @@ func Register(rcpt string) (MsgHandler, error) {
 func registerMemRcpt(rcpt string) chan string {
 	if _, exists := recipients[rcpt]; !exists {
 		recipients[rcpt] = make(chan string, 10)
-		log.Printf("Registered %v", rcpt)
+		log.Printf("Registered %v\n", rcpt)
 		return recipients[rcpt]
 	}
 	return recipients[rcpt]
 }
 
 func registerCacheRcpt(rcpt string) chan string {
-
+	ch := make(chan string, 10)
+	log.Printf("Registered %v\n", rcpt)
+	return ch
 }

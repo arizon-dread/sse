@@ -18,7 +18,7 @@ type CacheMsgHandler struct {
 func (cmh CacheMsgHandler) Send(msg string) error {
 	rdb, err := conn()
 	if err != nil {
-		return fmt.Errorf("unable to connect to redis, not publishing message, %v\n", err)
+		return fmt.Errorf("unable to connect to redis, not publishing message, %v", err)
 	}
 	defer rdb.Close()
 	ctx := context.Background()
@@ -30,7 +30,7 @@ func (cmh CacheMsgHandler) Send(msg string) error {
 func (cmh CacheMsgHandler) Receive(ch chan string) error {
 	rdb, err := conn()
 	if err != nil {
-		return fmt.Errorf("unable to connect to redis, not publishing message, %v\n", err)
+		return fmt.Errorf("unable to connect to redis, not publishing message, %v", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	for {
@@ -39,15 +39,15 @@ func (cmh CacheMsgHandler) Receive(ch chan string) error {
 		streams, err := msg.Result()
 		if err != nil {
 			cancel()
-			return fmt.Errorf("reading failed, %v\n", err)
+			return fmt.Errorf("reading failed, %v", err)
 		}
 		for _, v := range streams {
 			for _, m := range v.Messages {
 				for _, val := range m.Values {
-					switch val.(type) {
+					switch v := val.(type) {
 
 					case string:
-						ch <- val.(string)
+						ch <- v
 					default:
 						break
 					}
@@ -70,7 +70,7 @@ func (cmh CacheMsgHandler) Exists() bool {
 	return false
 }
 func (cmh CacheMsgHandler) Unregister() {
-	// do nothing
+	close(cmh.Ch)
 }
 func conn() (*redis.Client, error) {
 	conf := config.Get()
