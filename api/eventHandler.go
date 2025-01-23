@@ -29,7 +29,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 		ctx.Done()
 	}()
 
-	handler.Receive(handler.)
+	handler.Receive()
 	log.Printf("client %v is waiting for messages", recipient)
 	for {
 		select {
