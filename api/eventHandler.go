@@ -6,15 +6,15 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/arizon-dread/sse/internal/model"
 	"github.com/arizon-dread/sse/pkg/handlers"
+	"golang.org/x/net/context"
 )
 
-var recipients = make(map[string]chan string, 0)
-
 func Events(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx, cancel := context.WithCancel(r.Context())
 	recipient := r.PathValue("recipient")
 	handler, err := handlers.Register(recipient)
 	if err != nil {
@@ -24,16 +24,25 @@ func Events(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer func() {
-		log.Printf("unregistering client %v", recipient)
 		handler.Unregister()
-		ctx.Done()
-	}()
 
-	handler.Receive()
+	}()
+	subChan := handler.GetChannel()
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err = handler.Receive(ctx, subChan)
+		if err != nil {
+			cancel()
+			log.Printf("error encountered when starting to receive from the backing data structure, %v\n", err)
+		}
+	}()
 	log.Printf("client %v is waiting for messages", recipient)
 	for {
 		select {
 		case <-ctx.Done():
+			cancel()
 			return
 		case res, ok := <-subChan:
 			if ok {
@@ -43,13 +52,14 @@ func Events(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				ctx.Done()
+				cancel()
+				wg.Wait()
 				return
 			}
 
 		}
 
 	}
-
 }
 
 func ForwardMsg(w http.ResponseWriter, r *http.Request) {

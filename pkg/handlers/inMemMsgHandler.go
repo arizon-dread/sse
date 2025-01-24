@@ -1,6 +1,9 @@
 package handlers
 
-import "log"
+import (
+	"context"
+	"log"
+)
 
 type InMemMsgHandler struct {
 	Name string
@@ -11,7 +14,7 @@ func (immh InMemMsgHandler) Send(msg string) error {
 	recipients[immh.Name] <- msg
 	return nil
 }
-func (immh InMemMsgHandler) Receive(ch chan string) error {
+func (immh InMemMsgHandler) Receive(ctx context.Context, ch chan string) error {
 	if immh.Exists() {
 		return nil
 	}
@@ -29,4 +32,11 @@ func (immh InMemMsgHandler) Unregister() {
 	delete(recipients, immh.Name)
 	close(immh.Ch)
 
+}
+func (immh InMemMsgHandler) GetName() string {
+	return immh.Name
+}
+
+func (immh InMemMsgHandler) GetChannel() chan string {
+	return immh.Ch
 }
