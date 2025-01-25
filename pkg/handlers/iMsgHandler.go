@@ -14,7 +14,7 @@ type MsgHandler interface {
 	GetName() string
 	GetChannel() chan string
 	Send(msg string) error
-	Receive(context.Context, chan string) error
+	Receive(context.Context, chan string, context.CancelFunc) error
 	Exists() bool
 	Unregister()
 }
@@ -49,8 +49,7 @@ func registerCacheRcpt(rcpt string) chan string {
 	resp := rdb.Get(context.Background(), "receiver-"+rcpt)
 	res, _ := resp.Result()
 	if res == "" {
-		rdb.Set(context.Background(), "receiver-"+rcpt, "$", time.Hour*24)
-
+		rdb.Set(context.Background(), "receiver-"+rcpt, "+", time.Hour*24)
 	}
 	ch := make(chan string, 10)
 	log.Printf("Registered %v\n", rcpt)

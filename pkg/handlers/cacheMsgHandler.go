@@ -34,7 +34,7 @@ func (cmh CacheMsgHandler) Send(msg string) error {
 	return nil
 }
 
-func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string) error {
+func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string, cancel context.CancelFunc) error {
 	rdb, err := helpers.GetCacheConn()
 	if err != nil {
 		return fmt.Errorf("unable to connect to redis, not receiving messages, %v", err)
@@ -48,12 +48,13 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string) error {
 
 		select {
 		case <-ctx.Done():
+			cancel()
 			return nil
 		default:
 
-			msg := rdb.XRead(ctx, &redis.XReadArgs{Streams: []string{cmh.Name}, Count: 2, ID: res})
+			msg := rdb.XRead(ctx, &redis.XReadArgs{Streams: []string{cmh.Name}, Block: -1, Count: 2, ID: res})
 			streams, err := msg.Result()
-			if err != nil {
+			if err != nil && err.Error() != "redis: nil" {
 				ctx.Done()
 				return fmt.Errorf("reading failed, %v", err)
 			}
@@ -64,7 +65,7 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string) error {
 						case string:
 							ch <- v
 							res = m.ID
-							rdb.Set(ctx, "receiver-"+cmh.Name, m.ID, time.Hour*25)
+							rdb.Set(ctx, "receiver-"+cmh.Name, m.ID, time.Hour*24)
 						default:
 							return nil
 						}

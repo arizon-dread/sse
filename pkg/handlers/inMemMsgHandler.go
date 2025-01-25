@@ -14,7 +14,7 @@ func (immh InMemMsgHandler) Send(msg string) error {
 	recipients[immh.Name] <- msg
 	return nil
 }
-func (immh InMemMsgHandler) Receive(ctx context.Context, ch chan string) error {
+func (immh InMemMsgHandler) Receive(ctx context.Context, ch chan string, cancel context.CancelFunc) error {
 	if immh.Exists() {
 		return nil
 	}

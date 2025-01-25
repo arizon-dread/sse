@@ -6,7 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sync"
+	"strings"
 
 	"github.com/arizon-dread/sse/internal/model"
 	"github.com/arizon-dread/sse/pkg/handlers"
@@ -25,17 +25,15 @@ func Events(w http.ResponseWriter, r *http.Request) {
 
 	defer func() {
 		handler.Unregister()
-
 	}()
 	subChan := handler.GetChannel()
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
-		err = handler.Receive(ctx, subChan)
+		err = handler.Receive(ctx, subChan, cancel)
 		if err != nil {
-			cancel()
-			log.Printf("error encountered when starting to receive from the backing data structure, %v\n", err)
+			if !strings.Contains(err.Error(), "redis: nil") {
+				cancel()
+				log.Printf("error encountered when starting to receive from the backing data structure, %v\n", err)
+			}
 		}
 	}()
 	log.Printf("client %v is waiting for messages", recipient)
@@ -53,7 +51,6 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			} else {
 				ctx.Done()
 				cancel()
-				wg.Wait()
 				return
 			}
 
