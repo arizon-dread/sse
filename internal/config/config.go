@@ -14,13 +14,18 @@ var once sync.Once
 var conf *Config
 
 type Config struct {
-	Cors Cors `yaml:"cors"`
+	Cors  Cors  `yaml:"cors"`
+	Cache Cache `yaml:"cache,omitempty"`
 }
 
 type Cors struct {
 	Url     string   `yaml:"url"`
 	Methods []string `yaml:"methods"`
 	Headers []string `yaml:"headers"`
+}
+type Cache struct {
+	Url      string `yaml:"url"`
+	Password string `yaml:"password,omitempty"`
 }
 
 func Get() *Config {

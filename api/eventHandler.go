@@ -6,37 +6,43 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
-	"github.com/arizon-dread/sse/internal/helpers"
 	"github.com/arizon-dread/sse/internal/model"
+	"github.com/arizon-dread/sse/pkg/handlers"
+	"golang.org/x/net/context"
 )
 
-var recipients = make(map[string]chan string, 0)
-
 func Events(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx, cancel := context.WithCancel(r.Context())
 	recipient := r.PathValue("recipient")
-	if err := helpers.Register(recipient, recipients); err != nil {
+	handler, err := handlers.Register(recipient)
+	if err != nil {
 		log.Printf("error registering client: '%v', error: %v", recipient, err)
 		w.WriteHeader(404)
 		w.Write([]byte("no client supplied"))
 	}
 
 	defer func() {
-		if _, exists := recipients[recipient]; exists {
-			log.Printf("unregistering client %v", recipient)
-			close(recipients[recipient])
-			delete(recipients, recipient)
-			ctx.Done()
+		handler.Unregister()
+	}()
+	subChan := handler.GetChannel()
+	go func() {
+		err = handler.Receive(ctx, subChan, cancel)
+		if err != nil {
+			if !strings.Contains(err.Error(), "redis: nil") {
+				cancel()
+				log.Printf("error encountered when starting to receive from the backing data structure, %v\n", err)
+			}
 		}
-
 	}()
 	log.Printf("client %v is waiting for messages", recipient)
 	for {
 		select {
 		case <-ctx.Done():
+			cancel()
 			return
-		case res, ok := <-recipients[recipient]:
+		case res, ok := <-subChan:
 			if ok {
 				fmt.Fprintf(w, "data: %s\n\n", res)
 				if flusher, ok := w.(http.Flusher); ok {
@@ -44,13 +50,13 @@ func Events(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				ctx.Done()
+				cancel()
 				return
 			}
 
 		}
 
 	}
-
 }
 
 func ForwardMsg(w http.ResponseWriter, r *http.Request) {
@@ -68,22 +74,20 @@ func ForwardMsg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("received message for %v", msg.Recipient)
-	if err = helpers.Register(msg.Recipient, recipients); err != nil {
-		returnConflict(w)
+	handler, err := handlers.Register(msg.Recipient)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	if ch, exists := recipients[msg.Recipient]; exists {
-		log.Printf("forwarding message to %v", msg.Recipient)
-		select {
-		case ch <- msg.Message:
-		default:
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write([]byte("cache is full, no client is listening."))
-		}
 
-	} else {
-		returnConflict(w)
+	err = handler.Send(msg.Message)
+
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Write([]byte("cache is full, no client is listening."))
+		return
 	}
+	w.WriteHeader(http.StatusCreated)
 
 }
 

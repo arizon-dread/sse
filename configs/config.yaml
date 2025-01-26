@@ -7,3 +7,5 @@ cors:
   headers: [
     Content-Type
   ]
+cache:
+  #url: localhost:6379
