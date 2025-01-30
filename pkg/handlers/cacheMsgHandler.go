@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/arizon-dread/sse/internal/config"
 	"github.com/arizon-dread/sse/internal/helpers"
 	"github.com/redis/go-redis/v9"
 )
@@ -47,7 +48,14 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string, cancel c
 	//If this is a new consumer that has messages waiting in redis streams, start by giving the consumer the last 2 messages in the order they were sent.
 	if res == "+" || res == "" || res == "$" {
 		go func() {
-			m := rdb.XRevRangeN(ctx, cmh.Name, "+", "-", 2)
+			cfg := config.Get()
+			cacheCount := cfg.Cache.UnreadCacheCount
+			if cacheCount == 0 {
+				res = "$"
+				rdb.Set(ctx, "receiver-"+cmh.Name, res, time.Hour*24)
+				return
+			}
+			m := rdb.XRevRangeN(ctx, cmh.Name, "+", "-", int64(cacheCount))
 			msgs, err := m.Result()
 			if err != nil {
 				return

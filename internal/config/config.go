@@ -24,8 +24,9 @@ type Cors struct {
 	Headers []string `yaml:"headers"`
 }
 type Cache struct {
-	Url      string `yaml:"url"`
-	Password string `yaml:"password,omitempty"`
+	Url              string `yaml:"url"`
+	Password         string `yaml:"password,omitempty"`
+	UnreadCacheCount int    `yaml:"unreadCacheCount,omitempty"`
 }
 
 func Get() *Config {
