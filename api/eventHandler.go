@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/arizon-dread/sse/internal/model"
 	"github.com/arizon-dread/sse/pkg/handlers"
@@ -48,6 +49,7 @@ func Events(w http.ResponseWriter, r *http.Request) {
 				if flusher, ok := w.(http.Flusher); ok {
 					flusher.Flush()
 				}
+				handler.SetLastRead(time.Now())
 			} else {
 				ctx.Done()
 				cancel()
@@ -91,7 +93,21 @@ func ForwardMsg(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func returnConflict(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusConflict)
-	w.Write([]byte("supplied client is not registered."))
+func LastRead(w http.ResponseWriter, r *http.Request) {
+	recipient := r.PathValue("recipient")
+	handler, err := handlers.Register(recipient)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(fmt.Sprintf("recipient %v not found", recipient)))
+		return
+	}
+	dt := handler.GetLastRead()
+	if dt == nil {
+		w.WriteHeader(http.StatusTooEarly)
+		w.Write([]byte(fmt.Sprintf("recipient has not read any messages yet")))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(string(dt.Format("2006-01-02T03:04:05"))))
 }

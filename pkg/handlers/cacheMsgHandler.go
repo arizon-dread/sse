@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/arizon-dread/sse/internal/helpers"
@@ -76,7 +77,25 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string, cancel c
 	}
 
 }
-
+func (cmh CacheMsgHandler) GetLastRead() *time.Time {
+	rdb, err := helpers.GetCacheConn()
+	if err != nil {
+		return nil
+	}
+	res, _ := rdb.Get(context.Background(), "receiver-"+cmh.Name).Result()
+	if res == "" {
+		return nil
+	}
+	r := strings.SplitAfter(res, "-")
+	d, err := time.Parse("2006-01-02T03:04:05", r[0])
+	if err != nil {
+		return nil
+	}
+	return &d
+}
+func (cmh CacheMsgHandler) SetLastRead(d time.Time) {
+	//this func is here to satisfy the interface, but read is saved when sending the message on the client.
+}
 func (cmh CacheMsgHandler) Exists() bool {
 	rdb, err := helpers.GetCacheConn()
 	if err != nil {

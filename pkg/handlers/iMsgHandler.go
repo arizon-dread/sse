@@ -15,6 +15,8 @@ type MsgHandler interface {
 	GetChannel() chan string
 	Send(msg string) error
 	Receive(context.Context, chan string, context.CancelFunc) error
+	GetLastRead() *time.Time
+	SetLastRead(time.Time)
 	Exists() bool
 	Unregister()
 }
