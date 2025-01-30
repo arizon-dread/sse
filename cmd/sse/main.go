@@ -19,6 +19,7 @@ func main() {
 	mux := http.NewServeMux()
 	events := http.HandlerFunc(api.Events)
 	mux.Handle("GET /events/{recipient}", headers.SseHeadersMiddleware(events))
+	mux.HandleFunc("GET /lastRead/{recipient}", api.LastRead)
 	mux.HandleFunc("POST /message", api.ForwardMsg)
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

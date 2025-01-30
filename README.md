@@ -1,7 +1,7 @@
 # Server-sent Events api
 
 ## Introduction
-This is an api that accepts messages on `POST` to `/message`. Clients can start listening at `/events/{client-id}`.  
+This is an api that accepts messages on `POST` to `/message`. Clients can start listening at `/events/{client-id}`. You can get the timestamp of the last message that the client read at the `/lastRead/{client-id}` endpoint.  
 
 The messages can either be simply handled by a single instance that uses buffered channels in memory to temporarily cache up to 10 messages while there's no consumer listening to events, or you can set a cache.url setting that points to a redis-like instance (redis of valkey or a similar project that satisfies the same api structure) to use the cache to store consumers and keep track on what messages they have received. The Streams api is used to funnel messages from the producing REST endpoint to the consuming SSE endpoint. Messages are cached inside redis/valkey streams if the consumer is disconnected.  
 
