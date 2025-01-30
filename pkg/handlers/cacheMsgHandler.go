@@ -58,11 +58,13 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string, cancel c
 					switch v := vals.(type) {
 					case string:
 						ch <- v
+						res = mess.ID
 					}
 				}
 			}
+
+			rdb.Set(ctx, "receiver-"+cmh.Name, res, time.Hour*24)
 		}()
-		res = "$"
 	}
 	for {
 
