@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,7 +44,24 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string, cancel c
 	}
 	cmd := rdb.Get(ctx, "receiver-"+cmh.Name)
 	res, _ := cmd.Result()
-	if res == "" {
+	//If this is a new consumer that has messages waiting in redis streams, start by giving the consumer the last 2 messages in the order they were sent.
+	if res == "+" || res == "" || res == "$" {
+		go func() {
+			m := rdb.XRevRangeN(ctx, cmh.Name, "+", "-", 2)
+			msgs, err := m.Result()
+			if err != nil {
+				return
+			}
+			slices.Reverse(msgs)
+			for _, mess := range msgs {
+				for _, vals := range mess.Values {
+					switch v := vals.(type) {
+					case string:
+						ch <- v
+					}
+				}
+			}
+		}()
 		res = "$"
 	}
 	for {
@@ -52,7 +71,6 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string, cancel c
 			cancel()
 			return nil
 		default:
-
 			msg := rdb.XRead(ctx, &redis.XReadArgs{Streams: []string{cmh.Name}, Block: -1, Count: 2, ID: res})
 			streams, err := msg.Result()
 			if err != nil && err.Error() != "redis: nil" {
@@ -86,12 +104,14 @@ func (cmh CacheMsgHandler) GetLastRead() *time.Time {
 	if res == "" {
 		return nil
 	}
-	r := strings.SplitAfter(res, "-")
-	d, err := time.Parse("2006-01-02T03:04:05", r[0])
+	r := strings.Split(res, "-")
+	i, err := strconv.ParseInt(r[0], 10, 64)
 	if err != nil {
-		return nil
+		panic(err)
 	}
-	return &d
+	tm := time.Unix(i/1000, 0)
+
+	return &tm
 }
 func (cmh CacheMsgHandler) SetLastRead(d time.Time) {
 	//this func is here to satisfy the interface, but read is saved when sending the message on the client.

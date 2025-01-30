@@ -7,9 +7,8 @@ import (
 )
 
 type InMemMsgHandler struct {
-	Name        string
-	Ch          chan string
-	LastReadMsg *time.Time
+	Name string
+	Ch   chan string
 }
 
 func (immh InMemMsgHandler) Send(msg string) error {
@@ -24,11 +23,15 @@ func (immh InMemMsgHandler) Receive(ctx context.Context, ch chan string, cancel 
 	return nil
 }
 func (immh InMemMsgHandler) GetLastRead() *time.Time {
-	return immh.LastReadMsg
+	lastRead, ok := InMemRecipientsLastRead[immh.Name]
+	if !ok {
+		return nil
+	}
+	return &lastRead
 }
 func (immh InMemMsgHandler) SetLastRead(d time.Time) {
 	now := time.Now()
-	immh.LastReadMsg = &now
+	InMemRecipientsLastRead[immh.Name] = now
 }
 func (immh InMemMsgHandler) Exists() bool {
 	if _, exists := recipients[immh.Name]; exists {

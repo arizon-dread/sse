@@ -109,5 +109,5 @@ func LastRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(string(dt.Format("2006-01-02T03:04:05"))))
+	w.Write([]byte(string(dt.Format("2006-01-02T15:04:05"))))
 }

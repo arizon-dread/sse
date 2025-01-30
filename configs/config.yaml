@@ -8,4 +8,4 @@ cors:
     Content-Type
   ]
 cache:
-  #url: localhost:6379
+  url: localhost:6379

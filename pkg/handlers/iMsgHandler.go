@@ -22,6 +22,7 @@ type MsgHandler interface {
 }
 
 var recipients = make(map[string]chan string, 0)
+var InMemRecipientsLastRead = make(map[string]time.Time)
 
 func Register(rcpt string) (MsgHandler, error) {
 
@@ -51,7 +52,7 @@ func registerCacheRcpt(rcpt string) chan string {
 	resp := rdb.Get(context.Background(), "receiver-"+rcpt)
 	res, _ := resp.Result()
 	if res == "" {
-		rdb.Set(context.Background(), "receiver-"+rcpt, "+", time.Hour*24)
+		rdb.Set(context.Background(), "receiver-"+rcpt, "$", time.Hour*24)
 	}
 	ch := make(chan string, 10)
 	log.Printf("Registered %v\n", rcpt)
