@@ -45,7 +45,7 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string, cancel c
 	}
 	cmd := rdb.Get(ctx, "receiver-"+cmh.Name)
 	res, _ := cmd.Result()
-	//If this is a new consumer that has messages waiting in redis streams, start by giving the consumer the last 2 messages in the order they were sent.
+	//If this is a new consumer that has messages waiting in redis streams, start by giving the consumer the last 2(configurable) messages in the order they were sent.
 	if res == "+" || res == "" || res == "$" {
 		go func() {
 			cfg := config.Get()
