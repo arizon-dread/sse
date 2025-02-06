@@ -33,14 +33,10 @@ func Get() *Config {
 	once.Do(func() {
 		hostEnv := os.Environ()
 		var env string
-		he := make(map[string]string)
 		for _, v := range hostEnv {
 			keyVal := strings.Split(v, "=")
-			he[keyVal[0]] = keyVal[1]
-		}
-		for k, v := range he {
-			if k == "environment" {
-				env = v
+			if keyVal[0] == "environment" {
+				env = keyVal[1]
 			}
 		}
 		conf = &Config{}
@@ -50,6 +46,9 @@ func Get() *Config {
 				fmt.Printf("config/%v.yaml not found or readable, skipping", env)
 			} else {
 				err = yaml.Unmarshal(bEnv, &conf)
+				if err != nil {
+					log.Fatalf("unable to unmarshal config/%v.yaml into go struct, err: %v\n", env, err)
+				}
 			}
 		} else {
 			b, err := os.ReadFile("./configs/config.yaml")
@@ -58,7 +57,7 @@ func Get() *Config {
 			}
 			confErr := yaml.Unmarshal(b, &conf)
 			if confErr != nil {
-				log.Fatal("unable to parsal config into struct")
+				log.Fatalf("unable to unmarsal config/%v.yaml into go struct", env)
 			}
 
 		}
