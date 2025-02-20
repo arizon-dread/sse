@@ -11,3 +11,6 @@ The messages can either be simply handled by a single instance that uses buffere
 - send a message: `curl  http://localhost:8080/message -d '{"recipient": "client", "message": "hello world"}'` from a different terminal
 - the message should be received in the terminal that is subscribing.
 - the message is just a string and could be a base64 encoded value, a json payload (url-encoded or with proper escape characters in place), xml or just a plain string.
+
+# Production runtime
+The SSE api as a stand alone application caches the messages in channels inside the go runtime and is limited to a single instance. There is an implementation where you can use a redis like cache and stream instance to back the sse application, thus opening the posibility of a more robust and persistent message handling together with horizontal scaling posibilities. However, there's an issue where this is not working correctly, [#3](/../../issues/3). Please refer to this issue for status and details about the bug.
