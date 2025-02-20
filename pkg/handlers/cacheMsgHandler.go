@@ -81,7 +81,12 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string, cancel c
 			cancel()
 			return nil
 		default:
-			msg := rdb.XRead(ctx, &redis.XReadArgs{Streams: []string{cmh.Name}, Block: -1, Count: 2, ID: res})
+			var msg *redis.XStreamSliceCmd
+			if res == "$" {
+				msg = rdb.XRead(ctx, &redis.XReadArgs{Streams: []string{cmh.Name}, Block: 86400, Count: 1, ID: res})
+			} else {
+				msg = rdb.XRead(ctx, &redis.XReadArgs{Streams: []string{cmh.Name}, Block: -1, Count: 1, ID: res})
+			}
 			streams, err := msg.Result()
 			if err != nil && err.Error() != "redis: nil" {
 				ctx.Done()
