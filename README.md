@@ -13,4 +13,6 @@ The messages can either be simply handled by a single instance that uses buffere
 - the message is just a string and could be a base64 encoded value, a json payload (url-encoded or with proper escape characters in place), xml or just a plain string.
 
 # Production runtime
-The SSE api as a stand alone application caches the messages in channels inside the go runtime and is limited to a single instance. There is a configuration posibility where you can use a redis like cache and stream instance to back the sse application, thus opening the posibility of a more robust and persistent message handling together with horizontal scaling posibilities. However, there's an issue where this is not working correctly, please refer to this issue for status and details about the bug: [#3](/../../issues/3).
+The SSE api as a stand alone application caches the messages in channels inside the go runtime and is limited to a single instance and a small amount of cached messages. There is a configuration posibility where you can use a redis like cache and stream instance (that satisfies the API's for caching and streaming) to back the sse application, thus opening the posibility of a more robust and persistent message handling together with horizontal scaling posibilities. 
+
+Any configuration or license considerations of the choice of the cache and stream implementation is out of scope for SSE unless it is related to the connection config.
