@@ -10,3 +10,4 @@ cors:
 cache:
   url: localhost:6379
   unreadCacheCount: 10
+apiPort: 8080

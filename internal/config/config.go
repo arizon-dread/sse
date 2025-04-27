@@ -14,8 +14,9 @@ var once sync.Once
 var conf *Config
 
 type Config struct {
-	Cors  Cors  `yaml:"cors"`
-	Cache Cache `yaml:"cache,omitempty"`
+	Cors    Cors   `yaml:"cors"`
+	Cache   Cache  `yaml:"cache,omitempty"`
+	ApiPort string `yaml:"apiPort"`
 }
 
 type Cors struct {
@@ -43,7 +44,7 @@ func Get() *Config {
 		if env != "" {
 			bEnv, err := os.ReadFile(fmt.Sprintf("./configs/%v.yaml", env))
 			if err != nil {
-				fmt.Printf("config/%v.yaml not found or readable, skipping", env)
+				log.Printf("config/%v.yaml not found or readable, skipping", env)
 			} else {
 				err = yaml.Unmarshal(bEnv, &conf)
 				if err != nil {
@@ -61,7 +62,10 @@ func Get() *Config {
 			}
 
 		}
-
+		if conf.ApiPort == "" {
+			log.Println("No api port set, defaulting to 8080")
+			conf.ApiPort = "8080"
+		}
 	})
 	return conf
 }
