@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -45,7 +46,22 @@ func Events(w http.ResponseWriter, r *http.Request) {
 			return
 		case res, ok := <-subChan:
 			if ok {
-				fmt.Fprintf(w, "data: %s\n\n", res)
+
+				matched, err := regexp.MatchString(`^[a-zA-Z]+: .*\n{2}$`, res)
+				if err != nil {
+					log.Printf("error matching message: %v", err)
+					continue
+				}
+				if matched {
+					_, err := fmt.Fprintf(w, "%s", res)
+					log.Printf(`sent raw string to client: "%s"`, res)
+					if err != nil {
+						log.Printf("failed to write %s to client, err: %v", res, err)
+					}
+				} else {
+					fmt.Fprintf(w, "data: %s\n\n", res)
+					log.Printf(`sent prepended data string to client: "data: %s"`, res)
+				}
 				if flusher, ok := w.(http.Flusher); ok {
 					flusher.Flush()
 				}

@@ -43,6 +43,7 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string, cancel c
 	if err != nil {
 		return fmt.Errorf("unable to connect to redis, not receiving messages, %v", err)
 	}
+	defer rdb.Close()
 	cmd := rdb.Get(ctx, "receiver-"+cmh.Name)
 	res, _ := cmd.Result()
 	//If this is a new consumer that has messages waiting in redis streams, start by giving the consumer the last 2(configurable) messages in the order they were sent.
@@ -55,7 +56,7 @@ func (cmh CacheMsgHandler) Receive(ctx context.Context, ch chan string, cancel c
 				rdb.Set(ctx, "receiver-"+cmh.Name, res, time.Hour*24)
 				return
 			}
-			m := rdb.XRevRangeN(ctx, cmh.Name, "+", "-", int64(cacheCount))
+			m := rdb.XRevRangeN(ctx, "receiver-"+cmh.Name, "+", "-", int64(cacheCount))
 			msgs, err := m.Result()
 			if err != nil {
 				return
@@ -142,6 +143,7 @@ func (cmh CacheMsgHandler) Exists() bool {
 func (cmh CacheMsgHandler) Unregister() {
 	log.Printf("Unregistering client %v\n", cmh.Name)
 	close(cmh.Ch)
+	delete(recipients, cmh.Name)
 }
 
 func (cmh CacheMsgHandler) GetName() string {
@@ -149,5 +151,11 @@ func (cmh CacheMsgHandler) GetName() string {
 }
 
 func (cmh CacheMsgHandler) GetChannel() chan string {
-	return cmh.Ch
+	if cap(cmh.Ch) > 0 {
+		return cmh.Ch
+	}
+	ch := make(chan string, 10)
+	recipients[cmh.Name] = ch
+	return ch
+
 }

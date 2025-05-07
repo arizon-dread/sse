@@ -32,6 +32,7 @@ func Register(rcpt string) (MsgHandler, error) {
 	cfg := config.Get()
 
 	if len(cfg.Cache.Url) > 0 {
+
 		return CacheMsgHandler{Name: rcpt, Ch: registerCacheRcpt(rcpt)}, nil
 	} else {
 		return InMemMsgHandler{Name: rcpt, Ch: registerMemRcpt(rcpt)}, nil
@@ -51,15 +52,18 @@ func registerCacheRcpt(rcpt string) chan string {
 	rdb, err := helpers.GetCacheConn()
 	resp := rdb.Get(context.Background(), "receiver-"+rcpt)
 	res, _ := resp.Result()
+
 	if res == "" {
 		rdb.Set(context.Background(), "receiver-"+rcpt, "$", time.Hour*24)
+		res = "$"
+		recipients[rcpt] = make(chan string, 10)
 	}
-	ch := make(chan string, 10)
+
 	log.Printf("Registered %v\n", rcpt)
 	if err != nil {
 		log.Printf("failed getting cache connection")
 	}
 
 	log.Printf("Starting to read from %v\n", res)
-	return ch
+	return recipients[rcpt]
 }
